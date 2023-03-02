@@ -18,6 +18,9 @@
  */
 package org.apache.iceberg.flink.sink;
 
+import static org.apache.flink.api.common.typeinfo.Types.INT;
+import static org.apache.flink.api.common.typeinfo.Types.STRING;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +77,7 @@ public class TestFlinkIcebergSinkV2 {
 
   private static final int FORMAT_V2 = 2;
   private static final TypeInformation<Row> ROW_TYPE_INFO =
-      new RowTypeInfo(SimpleDataUtil.FLINK_SCHEMA.getFieldTypes());
+      new RowTypeInfo(new TypeInformation[] {INT, STRING}, new String[] {"id", "data"});
 
   private static final Map<String, RowKind> ROW_KIND_MAP =
       ImmutableMap.of(

@@ -18,6 +18,9 @@
  */
 package org.apache.iceberg.flink.sink;
 
+import static org.apache.flink.api.common.typeinfo.Types.INT;
+import static org.apache.flink.api.common.typeinfo.Types.STRING;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -27,9 +30,10 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.util.DataFormatConverters;
+import org.apache.flink.table.types.DataType;
 import org.apache.flink.test.util.MiniClusterWithClientResource;
 import org.apache.flink.types.Row;
 import org.apache.iceberg.AssertHelpers;
@@ -73,9 +77,11 @@ public class TestFlinkIcebergSink {
       new HadoopCatalogResource(TEMPORARY_FOLDER, TestFixtures.DATABASE, TestFixtures.TABLE);
 
   private static final TypeInformation<Row> ROW_TYPE_INFO =
-      new RowTypeInfo(SimpleDataUtil.FLINK_SCHEMA.getFieldTypes());
+      new RowTypeInfo(new TypeInformation[] {INT, STRING}, new String[] {"id", "data"});
+
   private static final DataFormatConverters.RowConverter CONVERTER =
-      new DataFormatConverters.RowConverter(SimpleDataUtil.FLINK_SCHEMA.getFieldDataTypes());
+      new DataFormatConverters.RowConverter(
+          SimpleDataUtil.FLINK_SCHEMA.getColumnDataTypes().toArray(new DataType[2]));
 
   private Table table;
   private StreamExecutionEnvironment env;
@@ -173,7 +179,7 @@ public class TestFlinkIcebergSink {
         Row.of(3, prefix + "ccc"));
   }
 
-  private void testWriteRow(TableSchema tableSchema, DistributionMode distributionMode)
+  private void testWriteRow(ResolvedSchema tableSchema, DistributionMode distributionMode)
       throws Exception {
     List<Row> rows = createRows("");
     DataStream<Row> dataStream = env.addSource(createBoundedSource(rows), ROW_TYPE_INFO);
