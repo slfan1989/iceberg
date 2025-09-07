@@ -16,24 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.spark;
+package org.apache.iceberg.spark.actions;
 
-import org.apache.iceberg.ParameterizedTestExtension;
-import org.apache.iceberg.Parameters;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.apache.iceberg.spark.CatalogTestBase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.TestTemplate;
 
-@ExtendWith(ParameterizedTestExtension.class)
-public abstract class CatalogTestBase extends TestBaseWithCatalog {
+public class TestHive2IcebergAction extends CatalogTestBase {
 
-  // these parameters are broken out to avoid changes that need to modify lots of test suites
-  @Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
-  protected static Object[][] parameters() {
-    return new Object[][] {
-      {
-        SparkCatalogConfig.SPARK_SESSION.catalogName(),
-        SparkCatalogConfig.SPARK_SESSION.implementation(),
-        SparkCatalogConfig.SPARK_SESSION.properties()
-      }
-    };
+  @AfterEach
+  public void removeTable() {
+    sql("DROP TABLE IF EXISTS %s", tableName);
+  }
+
+  @TestTemplate
+  public void emptyTable() {
+    createPartitionedTable();
+    sql("INSERT INTO TABLE %s VALUES (1, 'a', 'p1')", tableName);
+    sql("INSERT INTO TABLE %s VALUES (2, 'b', 'p2')", tableName);
+    SparkActions.get().hive2Iceberg(tableName).execute();
+  }
+
+  private void createPartitionedTable() {
+    sql("CREATE TABLE %s (c1 string, c2 string, c3 string) PARTITIONED BY (c1)", tableName);
   }
 }

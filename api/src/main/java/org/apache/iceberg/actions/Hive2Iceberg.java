@@ -16,24 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.spark;
+package org.apache.iceberg.actions;
 
-import org.apache.iceberg.ParameterizedTestExtension;
-import org.apache.iceberg.Parameters;
-import org.junit.jupiter.api.extension.ExtendWith;
+public interface Hive2Iceberg extends Action<Hive2Iceberg, Hive2Iceberg.Result> {
 
-@ExtendWith(ParameterizedTestExtension.class)
-public abstract class CatalogTestBase extends TestBaseWithCatalog {
+    Hive2Iceberg parallelism(int parallelism);
 
-  // these parameters are broken out to avoid changes that need to modify lots of test suites
-  @Parameters(name = "catalogName = {0}, implementation = {1}, config = {2}")
-  protected static Object[][] parameters() {
-    return new Object[][] {
-      {
-        SparkCatalogConfig.SPARK_SESSION.catalogName(),
-        SparkCatalogConfig.SPARK_SESSION.implementation(),
-        SparkCatalogConfig.SPARK_SESSION.properties()
-      }
-    };
-  }
+    interface Result {}
 }
