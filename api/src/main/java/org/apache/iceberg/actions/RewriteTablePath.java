@@ -77,13 +77,15 @@ public interface RewriteTablePath extends Action<RewriteTablePath, RewriteTableP
    */
   RewriteTablePath endVersion(String endVersion);
 
-    /**
-     * Determines whether a Hive metadata migration is in progress.
-     *
-     * @param metaMigrate A boolean indicating if the metadata migration is happening.
-     * @return this for method chaining
-     */
-    RewriteTablePath hiveMigrate(boolean metaMigrate);
+  /**
+   * Determines whether a Hive metadata migration is in progress.
+   *
+   * @param metaMigrate A boolean indicating if the metadata migration is happening.
+   * @return this for method chaining
+   */
+  default RewriteTablePath hiveMigrate(boolean metaMigrate) {
+    return this;
+  }
 
   /**
    * Custom staging location. It is optional. By default, staging location is a subdirectory under
