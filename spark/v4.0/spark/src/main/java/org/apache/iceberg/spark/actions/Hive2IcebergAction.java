@@ -22,10 +22,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.Hive2Iceberg;
 import org.apache.iceberg.actions.RewriteTablePath;
 import org.apache.iceberg.actions.SnapshotTable;
+import org.apache.iceberg.hive.HiveCatalog;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.spark.Spark3Util;
@@ -38,6 +40,7 @@ import org.apache.spark.sql.connector.catalog.CatalogPlugin;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.StagingTableCatalog;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.catalog.V1Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,21 +123,47 @@ public class Hive2IcebergAction extends BaseTableCreationSparkAction<Hive2Iceber
     // 3. Rewrite Table Path
     String sourcePrefix = snapShotSparkTable.table().location();
     String targetPrefix = CatalogUtils.URIToString(sourceSparkTable.storage().locationUri().get());
-    String stagingLocation = targetPrefix + "/metadata";
+    String stagingLocation = targetPrefix;
     boolean metaMigrate = true;
 
     RewriteTablePathSparkAction rewriteAction =
         SparkActions.get().rewriteTablePath(snapShotSparkTable.table());
     if (stagingLocation != null) {
-      // 需要了解stagingLocation的作用是什么 ？
       rewriteAction.stagingLocation(stagingLocation);
     }
-    // rewriteAction.hiveMetaMigrate(metaMigrate);
+    rewriteAction.hiveMigrate(true);
     RewriteTablePath.Result rewrite =
         rewriteAction.rewriteLocationPrefix(sourcePrefix, targetPrefix).execute();
     String fileListLocation = rewrite.fileListLocation();
     Preconditions.checkArgument(
         StringUtils.isNotBlank(fileListLocation), "rewrite may have failed.");
+
+    if (metaMigrate) {
+      try {
+        properties.put(CatalogProperties.CATALOG_IMPL, HiveCatalog.class.getName());
+
+        HiveCatalog hiveCatalog = new HiveCatalog();
+        hiveCatalog.setConf(spark().sparkContext().hadoopConfiguration());
+        hiveCatalog.initialize("hive", properties);
+
+        String metadataFileLocation = rewrite.latestVersion();
+
+        String targetMetadataFileLocation = targetPrefix + "/metadata/" + metadataFileLocation;
+        TableCatalog targetSourceCatalog = checkTargetCatalog(sourceCatalog);
+        targetSourceCatalog.alterTable(
+            sourceIdentifier,
+            TableChange.setProperty("write.parquet.compression-codec", "zstd"),
+            TableChange.setProperty("dream.table_type.format", "iceberg"),
+            TableChange.setProperty("hive_iceberg_change", "hivetoiceberg"),
+            TableChange.setProperty("metadata_location", targetMetadataFileLocation),
+            TableChange.setProperty("table_type", "ICEBERG"),
+            TableChange.setProperty("provide", "iceberg"),
+            TableChange.setProperty("gc.enabled", "true"));
+      } catch (Exception e) {
+        LOG.error("ReWrite metaMigrate Failed.", e);
+        throw new RuntimeException(e);
+      }
+    }
 
     return null;
   }
@@ -175,16 +204,6 @@ public class Hive2IcebergAction extends BaseTableCreationSparkAction<Hive2Iceber
   @Override
   protected Hive2IcebergAction self() {
     return this;
-  }
-
-  private void validateInputs() {}
-
-  private void validateAndSetEndVersion() {
-    // TableMetadata tableMetadata = ((HasTableOperations) table).operations().current();
-    // LOG.info("No end version specified. Will stage all files to the latest table version.");
-    // Preconditions.checkNotNull(
-    //    tableMetadata.metadataFileLocation(), "Metadata file location should not be null");
-    // this.endVersionName = tableMetadata.metadataFileLocation();
   }
 
   /**

@@ -20,7 +20,9 @@ package org.apache.iceberg.actions;
 
 public interface Hive2Iceberg extends Action<Hive2Iceberg, Hive2Iceberg.Result> {
 
-    Hive2Iceberg parallelism(int parallelism);
+  Hive2Iceberg parallelism(int parallelism);
 
-    interface Result {}
+  interface Result {
+    String fileListLocation();
+  }
 }
