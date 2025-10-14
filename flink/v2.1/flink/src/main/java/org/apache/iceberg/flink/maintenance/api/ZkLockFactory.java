@@ -247,6 +247,10 @@ public class ZkLockFactory implements TriggerLockFactory {
     try {
       policy = ZKRetryPolicies.valueOf(retryPolicyName);
     } catch (IllegalArgumentException e) {
+      LOG.warn(
+          "Unknown retry policy name '{}'. Falling back to default policy: EXPONENTIAL_BACKOFF.",
+          retryPolicyName,
+          e);
       policy = ZKRetryPolicies.EXPONENTIAL_BACKOFF;
     }
 
@@ -265,7 +269,7 @@ public class ZkLockFactory implements TriggerLockFactory {
 
       case EXPONENTIAL_BACKOFF:
       default:
-        return new ExponentialBackoffRetry(maxSleepTimeMs, maxRetries);
+        return new ExponentialBackoffRetry(baseSleepTimeMs, maxRetries);
     }
   }
 }
