@@ -22,12 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import org.apache.curator.test.TestingServer;
-import org.apache.flink.shaded.curator5.org.apache.curator.RetryPolicy;
-import org.apache.flink.shaded.curator5.org.apache.curator.retry.BoundedExponentialBackoffRetry;
-import org.apache.flink.shaded.curator5.org.apache.curator.retry.ExponentialBackoffRetry;
-import org.apache.flink.shaded.curator5.org.apache.curator.retry.RetryNTimes;
-import org.apache.flink.shaded.curator5.org.apache.curator.retry.RetryOneTime;
-import org.apache.flink.shaded.curator5.org.apache.curator.retry.RetryUntilElapsed;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,48 +64,32 @@ public class TestZkLockFactory extends TestLockFactoryBase {
   }
 
   @Test
-  void testAllRetryPoliciesCreationAndType() {
+  void testRetryPolicyClassMapping() {
     for (ZKRetryPolicies policy : ZKRetryPolicies.values()) {
       ZkLockFactory factory =
           new ZkLockFactory("localhost:2181", "test", 3000, 3000, 1000, 3, 2000, policy.name());
 
-      RetryPolicy retryPolicy = factory.createRetryPolicy();
+      Object retryPolicy = factory.createRetryPolicy();
+      assertThat(retryPolicy).isNotNull();
 
-      assertThat(retryPolicy)
-          .as("RetryPolicy should not be null for policy %s", policy)
-          .isNotNull();
+      String className = retryPolicy.getClass().getSimpleName();
 
       switch (policy) {
         case ONE_TIME:
-          assertThat(retryPolicy)
-              .as("Expected RetryOneTime for policy %s", policy)
-              .isInstanceOf(RetryOneTime.class);
+          assertThat(className).isEqualTo("RetryOneTime");
           break;
-
         case N_TIME:
-          assertThat(retryPolicy)
-              .as("Expected RetryNTimes for policy %s", policy)
-              .isInstanceOf(RetryNTimes.class);
+          assertThat(className).isEqualTo("RetryNTimes");
           break;
-
         case BOUNDED_EXPONENTIAL_BACKOFF:
-          assertThat(retryPolicy)
-              .as("Expected BoundedExponentialBackoffRetry for policy %s", policy)
-              .isInstanceOf(BoundedExponentialBackoffRetry.class);
+          assertThat(className).isEqualTo("BoundedExponentialBackoffRetry");
           break;
-
         case UNTIL_ELAPSED:
-          assertThat(retryPolicy)
-              .as("Expected RetryUntilElapsed for policy %s", policy)
-              .isInstanceOf(RetryUntilElapsed.class);
+          assertThat(className).isEqualTo("RetryUntilElapsed");
           break;
-
         case EXPONENTIAL_BACKOFF:
-          assertThat(retryPolicy)
-              .as("Expected ExponentialBackoffRetry for policy %s", policy)
-              .isInstanceOf(ExponentialBackoffRetry.class);
+          assertThat(className).isEqualTo("ExponentialBackoffRetry");
           break;
-
         default:
           throw new IllegalStateException("Unhandled policy type: " + policy);
       }
